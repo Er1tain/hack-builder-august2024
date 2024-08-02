@@ -1,0 +1,31 @@
+version: "3.9"
+
+networks:
+  hackaton_network:
+
+
+services:
+  db:
+    container_name: Hackaton_db
+    mem_limit: 1GB
+    image: postgres
+    ports:
+      - "5437:5432"
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: hackaton_db
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data/
+    networks:
+      - hackaton_network
+
+
+  hackaton_app:
+    container_name: Hack_app
+    mem_limit: 1GB
+    build: ../hack-builder-august2024/src
+    ports:
+      - "8001:8000"
+    networks:
+      - hackaton_network
