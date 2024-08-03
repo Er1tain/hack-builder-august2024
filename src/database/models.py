@@ -16,6 +16,7 @@ class User(Base):
     password: Mapped[str] = mapped_column(Text(), nullable=False, unique=True)
     email: Mapped[str] = mapped_column(String(225), nullable=False, unique=True)
     api_key: Mapped[str] = mapped_column(Text(), nullable=False, unique=True)
+    diplom_files: Mapped[list["Files"]] = relationship(back_populates="profile")
     role: Mapped[bool] = mapped_column(Boolean, default=False)
     profile: Mapped["Profile"] = relationship(back_populates="user", uselist=False)
     customer: Mapped["Customer"] = relationship(back_populates="user", uselist=False)
@@ -77,4 +78,10 @@ class ProfileProfessions(Base):
     profession_id: Mapped[int] = mapped_column(ForeignKey("professions.id", ondelete="CASCADE"), primary_key=True)
 
 
-
+class Files(Base):
+    __tablename__ = "diploms_files"
+    id: Mapped[obj_id]
+    file_name: Mapped[str] = mapped_column(Text(), nullable=False)
+    path: Mapped[str] = mapped_column(Text(), nullable=False)
+    profile_id: Mapped[int] = mapped_column(ForeignKey("profile.id", ondelete="CASCADE"), nullable=False)
+    profile: Mapped["User"] = relationship(back_populates="diplom_files")

@@ -14,9 +14,9 @@ app.include_router(api_router)
 #    "/", StaticFiles(directory=os.path.abspath("static"), html=True), name="static"
 #)
 
-@app.on_event("startup")
-async def startup_event():
-    await model_manager.clear_models()
+#@app.on_event("startup")
+#async def startup_event():
+#    await model_manager.clear_models()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

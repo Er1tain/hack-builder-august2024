@@ -1,5 +1,5 @@
 from .db import DB
-from .models import Base, User, Profile, Customer, ObjectConstruction, Professions, ProfileProfessions, ObjectConstructionProfessions
+from .models import Base, User, Profile, Customer, ObjectConstruction, Professions, ProfileProfessions, ObjectConstructionProfessions, Files
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -67,6 +67,7 @@ class ManagerDB:
                 joinedload(Profile.user),
                 joinedload(Profile.object_construction),
                 joinedload(Profile.professions),
+                joinedload(Profile.user).joinedload(User.diplom_files),
                 joinedload(Profile.object_construction).joinedload(ObjectConstruction.professions)
             )
             .join(Profile.user)
@@ -108,14 +109,25 @@ class ManagerDB:
 
     async def update_profile(self, values_data: dict, user_id: int) -> None:
         async with self.async_session() as session:
-            if values_data["professions"]:
-                for i in values_data["professions"]:
-                    await session.add(ProfileProfessions(profile=user_id, profession_id=i["id"]))
-            else:
-                values_data.pop("professions")
-            requests_model = update(Profile).values(**values_data).where(Profile.user_id == user_id).returning(Profile)
+            requests_model = update(Profile).values(**values_data).where(Profile.user_id == user_id)
             await session.execute(requests_model)
             await session.commit()
+
+    async def delete_profession_user(self, profession_id: int, user_id: int):
+        async with self.async_session() as session:
+            check = await session.execute(select(ProfileProfessions).filter(ProfileProfessions.profile_id == user_id,  ProfileProfessions.profession_id == profession_id))
+            check = check.scalar_one_or_none()
+            if check is not None:
+                await session.execute(delete(ProfileProfessions).filter(ProfileProfessions.profile_id == user_id, ProfileProfessions.profession_id == profession_id))
+                await session.commit()
+
+    async def create_profession_user(self, profession_id: int, user_id: int):
+        async with self.async_session() as session:
+            check = await session.execute(select(ProfileProfessions).filter(ProfileProfessions.profile_id == user_id,  ProfileProfessions.profession_id == profession_id))
+            check = check.scalar_one_or_none()
+            if check is None:
+                session.add(ProfileProfessions(profile_id=user_id, profession_id=profession_id))
+                await session.commit()
 
     async def update_user(self, values_data: dict, user_id: int) -> None:
         async with self.async_session() as session:
@@ -134,6 +146,13 @@ class ManagerDB:
             requests_model = update(Profile).values(object_construction_id=object_construction_id).where(Profile.user_id == user_id)
             await session.execute(requests_model)
             await session.commit()
+
+    async def create_diplom_file(self, file_data):
+        async with self.async_session() as session:
+            file = Files(**file_data)
+            session.add(Files)
+            await session.commit()
+            return file
 
     async def clear_models(self) -> None:
         async with self.db.engine.begin() as conn:

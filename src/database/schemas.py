@@ -6,6 +6,10 @@ class SuccessfulResponse(BaseModel):
     result: bool
 
 
+class LevelUpSchema(BaseModel):
+    level: int
+
+
 class RegisterRequestSchema(BaseModel):
     first_name: str
     surname: str
@@ -78,10 +82,14 @@ class ProfileSchema(BaseModel):
     second_name: str
     email: str
 
+class DiplomFileSchema(BaseModel):
+    url: str
+
 
 class ProfileInfo(BaseModel):
     id: int
     first_name: str
+    diploms_files: List[DiplomFileSchema]
     surname: str
     second_name: str
     email: str
@@ -100,7 +108,6 @@ class UpdateProfileSchema(BaseModel):
     grade_up: int
     phone_number: str | None
     about_me: str | None
-    professions: List[ProfessionsSchema]
 
 class CustomerInfoSchema(BaseModel):
     id: int
