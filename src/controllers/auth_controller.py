@@ -5,8 +5,8 @@ from logic.client_logic import UserLogicManager
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-@router.post("/register")
-async def register_user_point(schema: RegisterRequestSchema, response_model=RegisterResponseSchema) -> RegisterResponseSchema:
+@router.post("/register", response_model=RegisterResponseSchema)
+async def register_user_point(schema: RegisterRequestSchema) -> RegisterResponseSchema:
     result = await UserLogicManager.register_user_logic(schema)
     return result
 

@@ -28,7 +28,7 @@ async def create_object_construction_point(schema: ObjectConstructionCreateSchem
     return SuccessfulResponse(result=True)
 
 
-@router.get("/info/object-construction/{obj_id}")
+@router.get("/info/object-construction/{obj_id}", response_model=ObjectConstructionInfoSchema)
 async def get_info_object_construction_point(obj_id: int, request: Request) -> ObjectConstructionInfoSchema:
     obj_info = await CustomerLogicManager.get_info_object_construction_logic(obj_id)
     return obj_info
