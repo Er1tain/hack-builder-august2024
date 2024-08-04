@@ -27,6 +27,7 @@ class LoginRequestSchema(BaseModel):
 class LoginResponseSchema(BaseModel):
     id: int
     api_key: str
+    role: bool
 
 
 class RegisterResponseSchema(BaseModel):

@@ -37,6 +37,6 @@ async def get_info_object_construction_point(obj_id: int, request: Request) -> O
 @router.delete("/delete/object-construction/{obj_id}", response_model=SuccessfulResponse)
 async def delete_object_construction_point(obj_id: int, request: Request) -> SuccessfulResponse:
     api_key = request.headers.get("api-key")
-    customer = await model_manager.get_user(api_key=api_key)
+    customer = await model_manager.get_customer_info(api_key=api_key)
     await CustomerLogicManager.delete_object_construction_logic(obj_id=obj_id, customer_id=customer.id)
     return SuccessfulResponse(result=True)

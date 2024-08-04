@@ -8,7 +8,7 @@ class CustomerLogicManager:
     @staticmethod
     async def get_customer_info_logic(api_key: str):
         customer_info = await model_manager.get_customer_info(api_key)
-        return CustomerInfoSchema(id=customer_info.user_id,
+        return CustomerInfoSchema(id=customer_info.id,
                                   first_name=customer_info.user.first_name,
                                   surname=customer_info.user.surname,
                                   second_name=customer_info.user.second_name,
@@ -16,14 +16,15 @@ class CustomerLogicManager:
                                   company_name=customer_info.company_name,
                                   company_description=customer_info.company_description,
                                   object_constructions=[ObjectConstructionProfileSchema
-                                                        (id=obj.object_construction.id,
-                                                         work_name=obj.object_construction.work_name,
-                                                         price=obj.object_construction.price,
-                                                         ork_description=obj.object_construction.work_description,
-                                                         available_vacancies=obj.object_construction.available_vacancies,
+                                                        (id=obj.id,
+                                                         work_name=obj.work_name,
+                                                         work_description=obj.work_description,
+                                                         price=obj.price,
+                                                         ork_description=obj.work_description,
+                                                         available_vacancies=obj.available_vacancies,
                                                          professions=[ProfessionsSchema(id=prof.id,
                                                                                         profession_name=prof.profession_name)
-                                                                      for prof in obj.object_construction.professions])
+                                                                      for prof in obj.professions])
                                                         for obj in customer_info.object_constructions])
 
     @staticmethod
@@ -40,7 +41,7 @@ class CustomerLogicManager:
         await model_manager.update_user(user_id=customer_id, values_data=user_info)
         await model_manager.update_customer(values_data=customer_info, customer_id=customer_id)
         customer_info = await model_manager.get_customer_info(api_key)
-        return CustomerInfoSchema(id=customer_info.user_id,
+        return CustomerInfoSchema(id=customer_info.id,
                                   first_name=customer_info.user.first_name,
                                   surname=customer_info.user.surname,
                                   second_name=customer_info.user.second_name,
@@ -48,15 +49,15 @@ class CustomerLogicManager:
                                   company_name=customer_info.company_name,
                                   company_description=customer_info.company_description,
                                   object_constructions=[ObjectConstructionProfileSchema
-                                                        (id=obj.object_construction.id,
-                                                         price=obj.object_construction.price,
-                                                         work_name=obj.object_construction.work_name,
-                                                         ork_description=obj.object_construction.work_description,
-                                                         available_vacancies=obj.object_construction.available_vacancies,
+                                                        (id=obj.id,
+                                                         price=obj.price,
+                                                         work_name=obj.work_name,
+                                                         work_description=obj.work_description,
+                                                         available_vacancies=obj.available_vacancies,
                                                          professions=[ProfessionsSchema(id=prof.id,
                                                                                         profession_name=prof.profession_name)
                                                                       for prof in
-                                                                      obj.object_construction.professions] if obj.object_construction.professions else [])
+                                                                      obj.professions] if obj.professions else [])
                                                         for obj in
                                                         customer_info.object_constructions] if customer_info.object_constructions else [])
 
@@ -86,7 +87,7 @@ class CustomerLogicManager:
 
     @staticmethod
     async def create_object_construction_logic(schema_create: ObjectConstructionCreateSchema, api_key: str):
-        customer = await model_manager.get_user(api_key=api_key)
+        customer = await model_manager.get_customer_info(api_key=api_key)
         await model_manager.create_object_construction(schema_create.dict(), customer_id=customer.id)
 
     @staticmethod

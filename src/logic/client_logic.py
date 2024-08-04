@@ -7,6 +7,7 @@ from database.schemas import RegisterRequestSchema, RegisterResponseSchema, Prof
 from database.manager import model_manager
 from werkzeug.security import check_password_hash, generate_password_hash
 from fastapi import HTTPException
+from ML.ml_main import parsing_person, parsing_objects, vectorize_and_rank, back_to_back, recommendation
 
 
 class UserLogicManager:
@@ -35,7 +36,7 @@ class UserLogicManager:
             detail_error = ErrorSchema(error_message="Вы не зарегестрированы или ввели не верный пароль", error_type="ErrorAuthorihtation")
             raise HTTPException(status_code=404, detail=detail_error.dict())
         if check_password_hash(password=login_schema.password, pwhash=user.password):
-            return LoginResponseSchema(id=user.id, api_key=user.api_key)
+            return LoginResponseSchema(id=user.id, api_key=user.api_key, role=user.role)
         detail_error = ErrorSchema(error_message="Ошибка авторизации, не верный пороль", error_type="ErrorAuthorihtation")
         raise HTTPException(status_code=403, detail=detail_error.dict())
 
@@ -43,6 +44,7 @@ class UserLogicManager:
     async def get_profile_info_logic(api_key: str):
         profile_info = await model_manager.get_profile_info(api_key=api_key)
         print(profile_info.professions)
+        print(1, profile_info, profile_info.id)
         return ProfileInfo(id=profile_info.user_id,
                            first_name=profile_info.user.first_name,
                            diploms_files=[DiplomFileSchema(url=f"api/client/file/{url.file_name}") for url in profile_info.user.diplom_files] if profile_info.user.diplom_files else [],
@@ -79,16 +81,55 @@ class UserLogicManager:
         return update_user_profile
 
     @staticmethod
-    async def get_all_object_construction_logic():
-        objects_constructions = await model_manager.get_object_construction_all()
-        return ObjectConstructionFeedSchema(objects_constructions=[
+    async def delete_object_constraction_profile(api_key: str):
+        user = await model_manager.get_user(api_key=api_key)
+        await model_manager.update_profile(values_data={"object_construction_id": None}, user_id=user.id)
+
+    @staticmethod
+    async def get_all_object_construction_logic(api_key: str):
+        objects_constructions = await model_manager.get_object_construction_all(api_key)
+        object_list = ObjectConstructionFeedSchema(objects_constructions=[
             ObjectConstructionProfileSchema(id=obj.id,
                                             work_name=obj.work_name,
                                             price=obj.price,
                                             work_description=obj.work_description,
                                             available_vacancies=obj.available_vacancies,
-                                            professions=[ProfessionsSchema(id=prof.id, profession_name=prof.profession_name) for
-                                            prof in obj.professions] if obj.professions else []) for obj in objects_constructions] if objects_constructions else [])
+                                            professions=[ProfessionsSchema(id=prof.id, profession_name=prof.profession_name).dict() for
+                                            prof in obj.professions] if obj.professions else []).dict() for obj in objects_constructions] if objects_constructions else []).dict()
+        profile = await model_manager.get_profile_info(api_key=api_key)
+        person = {
+          "first_name": profile.user.first_name,
+          "surname": profile.user.surname,
+          "second_name": profile.user.second_name,
+          "email": profile.user.email,
+          "grade_up": profile.grade_up,
+          "phone_number": profile.phone_number,
+          "about_me": profile.about_me,
+          "professions": [
+            {
+              "id": prof.id,
+              "profession_name": prof.profession_name
+            }
+              for prof in profile.professions
+          ] if profile.professions else []
+        }
+        print(person)
+        input_sentence = parsing_person(person)
+        print(input_sentence)
+        base = parsing_objects(object_list)
+        other_sentences = base['vacancy'].tolist()
+        title = dict(zip(base['id'].tolist(), base['title'].tolist()))
+        ranked_sentences = vectorize_and_rank(input_sentence, other_sentences, title)
+        objects_constructions_feed = back_to_back(ranked_sentences, object_list)
+        return ObjectConstructionFeedSchema(objects_constructions=[ObjectConstructionProfileSchema(id=obj["id"],
+                                                                                                    work_name=obj["work_name"],
+                                                                                                    price=obj["price"],
+                                                                                                    work_description=obj["work_description"],
+                                                                                                    available_vacancies=obj["available_vacancies"],
+                                                                                                    professions=[ProfessionsSchema(id=prof["id"], profession_name=prof["profession_name"]) for
+                                            prof in obj["professions"]] if obj["professions"] else [] ) for obj in objects_constructions_feed["objects_constructions"]])
+
+
 
     @staticmethod
     async def create_profile_object_construction_logic(obj_id: int, user_id: int):
@@ -119,10 +160,10 @@ class UserLogicManager:
 
     @staticmethod
     async def create_profession_profile_logic(api_key: str, profession_id: int):
-        profile = await model_manager.get_user(api_key)
+        profile = await model_manager.get_profile_info(api_key)
         await model_manager.create_profession_user(profession_id=profession_id, user_id=profile.id)
 
     @staticmethod
     async def delete_profession_profile_logic(api_key: str, profession_id: int):
-        profile = await model_manager.get_user(api_key)
+        profile = await model_manager.get_profile_info(api_key)
         await model_manager.delete_profession_user(profession_id=profession_id, user_id=profile.id)

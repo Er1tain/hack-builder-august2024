@@ -1,7 +1,7 @@
 from .db import DB
 from .models import Base, User, Profile, Customer, ObjectConstruction, Professions, ProfileProfessions, ObjectConstructionProfessions, Files
 from sqlalchemy import select, update, delete
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload, selectinload, aliased
 
 
 class ManagerDB:
@@ -100,12 +100,33 @@ class ManagerDB:
             object_construction = await session.execute(requests_model)
             return object_construction.unique().scalar_one_or_none()
 
-    async def get_object_construction_all(self) -> list[ObjectConstruction]:
+    async def get_object_construction_all(self, api_key: str) -> list[ObjectConstruction]:
         async with self.async_session() as session:
-            requests_model = select(ObjectConstruction).options(joinedload(ObjectConstruction.customer),
-                                                                joinedload(ObjectConstruction.professions))
+            # Алиас для таблицы профилей
+            profile_alias = aliased(Profile)
+
+            # Подзапрос для получения всех объектов ObjectConstruction, на которые откликался конкретный пользователь
+            subquery = (
+                select(ObjectConstruction.id)
+                .join(ObjectConstruction.workers)
+                .join(Profile.user)
+                .filter(User.api_key == api_key)
+                .subquery()
+            )
+
+            # Основной запрос для получения всех объектов ObjectConstruction, на которые НЕ откликался конкретный пользователь
+            requests_model = (
+                select(ObjectConstruction)
+                .options(
+                    joinedload(ObjectConstruction.customer),
+                    joinedload(ObjectConstruction.professions),
+                    joinedload(ObjectConstruction.workers).joinedload(Profile.user)
+                )
+                .filter(~ObjectConstruction.id.in_(subquery))
+            )
+
             feed_object_construction = await session.execute(requests_model)
-            return feed_object_construction.unique().scalars()
+            return feed_object_construction.unique().scalars().all()
 
     async def update_profile(self, values_data: dict, user_id: int) -> None:
         async with self.async_session() as session:
@@ -125,6 +146,7 @@ class ManagerDB:
         async with self.async_session() as session:
             check = await session.execute(select(ProfileProfessions).filter(ProfileProfessions.profile_id == user_id,  ProfileProfessions.profession_id == profession_id))
             check = check.scalar_one_or_none()
+            print(check)
             if check is None:
                 session.add(ProfileProfessions(profile_id=user_id, profession_id=profession_id))
                 await session.commit()
